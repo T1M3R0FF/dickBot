@@ -50,14 +50,14 @@ def measure(message):
 
 @bot.message_handler(commands=['average'])
 def average(message):
-    aver_dict = {}
+    total = 'Усреднённые жезлы на сегодняшний день:\n'
     if len(users) != 0:
-        for key, value in users.items():
-            aver_dict.update({key: statistics.mean(value)})
-        sorted_users = dict(reversed(sorted(aver_dict.items(), key=lambda item: item[1])))
+        # сортировка выводимой строки
+        sorted_users = dict(reversed(sorted(users.items(), key=lambda item: item[1])))
+        # упаковка строки по каждому юзеру
         for key, value in sorted_users.items():
-            bot.send_message(message.chat.id, f'Сводка по средним на сегодняшний день:\n'
-                                              f'{key}: {value} см')
+            total += f'@{str(key)}:  <b>{str(statistics.mean(value))} см</b>\n'
+        bot.send_message(message.chat.id, total, parse_mode='html')
 
 
 bot.polling(non_stop=True)
