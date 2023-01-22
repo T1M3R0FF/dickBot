@@ -2,6 +2,9 @@ import telebot
 import random
 import time
 import statistics
+import schedule
+from requests import get
+from threading import Thread
 
 bot = telebot.TeleBot('5706224983:AAFvcDUZGtn1_Fa4O7RU6AdBrynZcOsCAQc')
 
@@ -14,15 +17,16 @@ emojis = [' 😏', ' 😱', ' 😁', ' 😯', ' 🥰', ' 🤩', ' 😳', ' 😨'
 
 users = {}
 users_time = {}
+chat_id = -849170342
 
 
 @bot.message_handler(commands=['start'])
 def start(message):
     if message.from_user.username in users:
-        bot.reply_to(message, "Ты уже в клубе")
+        bot.reply_to(message, "Ты уже в клубе", parse_mode=None)
         return True
     users.update({message.from_user.username: []})
-    bot.send_message(message.   chat.id, 'Welcome to the club, buddy!')
+    bot.send_message(message.chat.id, 'Welcome to the club, buddy!')
 
 
 @bot.message_handler(commands=['measure'])
@@ -59,6 +63,8 @@ def average(message):
         for key, value in sorted_users.items():
             total += f'@{str(key)}:  <b>{str(statistics.mean(value))} см</b>\n'
         bot.send_message(message.chat.id, total, parse_mode='html')
+    else:
+        bot.send_message(message.chat.id, 'Клуб все еще пуст, заходи /start')
 
 
 # замер у всех сразу
@@ -102,4 +108,23 @@ def getout(message):
         bot.send_message(message.chat.id, f'@{message.from_user.username} изволил покинуть наш клуб')
 
 
+# секретный дикпик
+def dickpic():
+    photo = open('C:/Users/Mio Welt/Documents/0.3%_chance.jpg', 'rb')
+    if random.random() < 0.004:
+        bot.send_message(chat_id, 'Сегодня просто ахуеть, какой счастливый день!!!!!\n'
+                                  'Шанс выпадения Властелина очень, очень мал!')
+        bot.send_photo(chat_id, photo)
+        return True
+
+
+def do_schedule():
+    schedule.every().day.at('12:00').do(dickpic)
+    while True:
+        schedule.run_pending()
+        time.sleep(1)
+
+
+thread = Thread(target=do_schedule)
+thread.start()
 bot.polling(non_stop=True)
