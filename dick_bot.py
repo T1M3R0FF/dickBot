@@ -17,6 +17,8 @@ emojis = [' 😏', ' 😱', ' 😁', ' 😯', ' 🥰', ' 🤩', ' 😳', ' 😨'
 
 users = {}
 users_time = {}
+gays = {}
+gays_time = {}
 chat_id = -849170342
 
 
@@ -26,6 +28,7 @@ def start(message):
         bot.reply_to(message, "Ты уже в клубе", parse_mode=None)
         return True
     users.update({message.from_user.username: []})
+    gays.update({message.from_user.username: []})
     bot.send_message(message.chat.id, 'Welcome to the club, buddy!')
 
 
@@ -55,6 +58,10 @@ def measure(message):
 
 @bot.message_handler(commands=['average'])
 def average(message):
+    # проверка на дурака
+    if message.from_user.username not in users:
+        bot.send_message(message.chat.id, 'Ты пока не в клубе, жми /start')
+        return True
     total = 'Усреднённые жезлы на сегодняшний день:\n'
     if len(users) != 0:
         # сортировка выводимой строки
@@ -70,6 +77,11 @@ def average(message):
 # замер у всех сразу
 @bot.message_handler(commands=['all'])
 def all_in(message):
+    # проверка на дурака
+    if message.from_user.username not in users:
+        bot.send_message(message.chat.id, 'Ты пока не в клубе, жми /start')
+        return True
+
     if len(users) == 0:
         bot.send_message(message.chat.id, 'Клуб опустел:(\nЗаходи, стань первым /start')
         return True
@@ -95,6 +107,51 @@ def all_in(message):
         bot.send_message(message.chat.id, everyone, parse_mode='html')
 
 
+
+# гейметр
+@bot.message_handler(commands=['gay'])
+def gay(message):
+    # проверка на дурака
+    if message.from_user.username not in users:
+        bot.send_message(message.chat.id, 'Ты пока не в клубе, жми /start')
+        return True
+
+    if len(gays_time) != 0 and len(gays[message.from_user.username]) != 0 and time.perf_counter() - gays_time[
+        message.from_user.username] < 86400:
+        bot.reply_to(message, f'@{message.from_user.username} сегодня гей на'
+                              f' <b>{gays[message.from_user.username][-1]}%</b>', parse_mode='html')
+        return True
+    # если новый юзер, то дать замерить либо через сутки
+    elif message.from_user.username not in gays_time or (
+            len(gays_time) != 0 and time.perf_counter() - gays_time[message.from_user.username] >= 86400):
+
+        size = random.randint(0, 200)
+        gays_time.update({message.from_user.username: time.perf_counter()})
+        gays[message.from_user.username].append(size)
+        bot.reply_to(message, f'@{message.from_user.username} сегодня гей на'
+                              f' <b>{gays[message.from_user.username][-1]}%</b>', parse_mode='html')
+
+
+# средние геи
+@bot.message_handler(commands=['gayaverage'])
+def gayaverage(message):
+    # проверка на дурака
+    if message.from_user.username not in users:
+        bot.send_message(message.chat.id, 'Ты пока не в клубе, жми /start')
+        return True
+
+    total = 'Посмотрим на латентных наших средних:\n'
+    if len(gays) != 0:
+        # сортировка выводимой строки
+        sorted_gays = dict(reversed(sorted(gays.items(), key=lambda item: item[1])))
+        # упаковка строки по каждому юзеру
+        for key, value in sorted_gays.items():
+            total += f'@{str(key)}:  <b>{str(statistics.mean(value))} %</b>\n'
+        bot.send_message(message.chat.id, total, parse_mode='html')
+    else:
+        bot.send_message(message.chat.id, 'Клуб все еще пуст, заходи /start')
+
+
 # выход из бота
 @bot.message_handler(commands=['getout'])
 def getout(message):
@@ -104,7 +161,13 @@ def getout(message):
     else:
         if message.from_user.username in users_time:
             del users_time[message.from_user.username]
+
+        if message.from_user.username in gays_time:
+            del gays_time[message.from_user.username]
+
+        del gays[message.from_user.username]
         del users[message.from_user.username]
+
         bot.send_message(message.chat.id, f'@{message.from_user.username} изволил покинуть наш клуб')
 
 
@@ -113,7 +176,7 @@ def dickpic():
     photo = open('C:/Users/Mio Welt/Documents/0.3%_chance.jpg', 'rb')
     if random.random() < 0.004:
         bot.send_message(chat_id, 'Сегодня просто ахуеть, какой счастливый день!!!!!\n'
-                                  'Шанс выпадения Властелина очень, очень мал!')
+                                  'Шанс выпадения Властелина очень, очень мал, поздравляю!!!!')
         bot.send_photo(chat_id, photo)
         return True
 
