@@ -14,6 +14,7 @@ dicks = ['Твоя дилдосина', 'Твоя елда', 'Твой пени�
          'Твой член', 'Твой хоботок', 'Твой маленький друг']
 emojis = [' 😏', ' 😱', ' 😁', ' 😯', ' 🥰', ' 🤩', ' 😳', ' 😨', ' 😈', ' 🍌', ' 🌽', ' 🍆']
 
+temp_set = set()  # для проверки айди пользователя в plus() и minus()
 users = {}
 users_time = {}
 users_bonus = {}
@@ -22,6 +23,24 @@ gays = {}
 gays_time = {}
 average_dicks = {}
 chat_id = -849170342
+
+
+@bot.message_handler(commands=['help'])
+def manual(message):
+    bot.reply_to(message, 'Здарова, пробежимся по командам.\n'
+                          'Через /start ты заходишь в бота и можешь использовать его команды. /measure, как и /gay'
+                          ' просто измеряют член и насколько ты гей соответственно(измерять можно раз в сутки,'
+                          ' если сутки не прошли, высветится то же значение), эти значения можно усреднить через'
+                          ' /average и /gayaverage, но /average высчитывается не просто так. Каждый раз, '
+                          'делая новый замер члена, тебе падает на бонусный счет(/balance) 10% от размера. Эти бонусы'
+                          ' можно использовать двумя способами: либо прибавить кому то сантиметры к СРЕДНЕМУ значению'
+                          '(/plus), либо убавить(/minus), в том числе и себе. То число, сколько тебе накинули в сумме,'
+                          ' будет каждый раз вычитаться или прибавляться к среднему значению. Пример: по итогу 3-х дней'
+                          ' среднее значение у тебя 50 см, но тебе в сумме накинули на -15(посмотреть, сколько тебе'
+                          ' накинули можно через /scale). Таким образом, среднее у тебя считается как 50-15=35 см. На'
+                          ' следующий день ты сделал замер, и среднее у тебя стало 60 см, но в scale до сих пор -15,'
+                          ' поэтому среднее будет 60-15=45 см. Кажется, всё.\n'
+                          ' /all замеряет сразу у всех, кто прожал старт, /getout - выход из бота. Веселитесь!')
 
 
 @bot.message_handler(commands=['start'])
@@ -44,7 +63,7 @@ def measure(message):
         return True
     # проверка на новую генерацию через сутки
     # если юзер существует и сутки не прошли
-    if len(users_time) != 0 and len(users[message.from_user.username]) != 0\
+    if len(users_time) != 0 and len(users[message.from_user.username]) != 0 \
             and time.perf_counter() - users_time[message.from_user.username] < 86400:
         bot.reply_to(message, f'{random.choice(dicks)} сегодня'
                               f' <b>{users[message.from_user.username][-1]}см</b>'
@@ -125,7 +144,7 @@ def gay(message):
         bot.send_message(message.chat.id, 'Ты пока не в клубе, жми /start')
         return True
 
-    if len(gays_time) != 0 and len(gays[message.from_user.username]) != 0\
+    if len(gays_time) != 0 and len(gays[message.from_user.username]) != 0 \
             and time.perf_counter() - gays_time[message.from_user.username] < 86400:
         bot.reply_to(message, f'@{message.from_user.username} сегодня гей на'
                               f' <b>{gays[message.from_user.username][-1]}%</b>', parse_mode='html')
@@ -134,7 +153,7 @@ def gay(message):
     elif message.from_user.username not in gays_time or (
             len(gays_time) != 0 and time.perf_counter() - gays_time[message.from_user.username] >= 86400):
 
-        size = random.randint(0, 200)
+        size = random.randint(0, 100)
         gays_time.update({message.from_user.username: time.perf_counter()})
         gays[message.from_user.username].append(size)
         bot.reply_to(message, f'@{message.from_user.username} сегодня гей на'
@@ -174,15 +193,22 @@ def getout(message):
         if message.from_user.username in gays_time:
             del gays_time[message.from_user.username]
 
+        if message.from_user.username in average_dicks:
+            del average_dicks[message.from_user.username]
+
         del gays[message.from_user.username]
         del users[message.from_user.username]
-
+        del users_bonus[message.from_user.username]
+        del users_scale[message.from_user.username]
         bot.send_message(message.chat.id, f'@{message.from_user.username} изволил покинуть наш клуб')
 
 
 # проверка баланса
 @bot.message_handler(commands=['balance'])
 def balance(message):
+    if message.from_user.username not in users:
+        bot.send_message(message.chat.id, 'Ты пока не в клубе, жми /start')
+        return True
     bot.reply_to(message, f'Ваш текущий баланс: <b>{users_bonus[message.from_user.username]} очков</b>',
                  parse_mode='html')
 
@@ -190,60 +216,101 @@ def balance(message):
 # прибавить кому-то см к среднему
 @bot.message_handler(commands=['plus'])
 def plus(message):
-    msg = bot.send_message(message.chat.id, 'Введите ник и число через пробел - кому и сколько хотите накинуть.'
-                                            '(Jimmythedoc 10)\n'
-                                            'Для отмены нажмите /cancel')
-    bot.register_next_step_handler(msg, add)
+    name = message.from_user.username
+    if name not in users:
+        bot.send_message(message.chat.id, 'Ты пока не в клубе, жми /start')
+        return True
+    if len(temp_set) != 0:
+        msg = bot.send_message(message.chat.id, f'Подожди, пока {temp_set} завершит операцию')
+        bot.register_next_step_handler(msg, add)
+    else:
+        temp_set.add(name)
+        msg1 = bot.send_message(message.chat.id, 'Введите ник и число через пробел - кому и сколько хотите накинуть.'
+                                                 '(Jimmythedoc 10)\n'
+                                                 'Для отмены нажмите /cancel')
+        bot.register_next_step_handler(msg1, add)
 
 
 def add(message):
-    if message.text == '/cancel':
-        bot.reply_to(message, 'Галя, отмена!')
-        return True
-    text = message.text.split(' ')
-    if len(text) != 2 or not text[-1].isdigit():
-        bot.send_message(message.chat.id, 'Некорректный ввод')
-        return True
-    nickname = text[-2]
-    inches = int(text[-1])
-    if nickname not in users_bonus:
-        bot.send_message(message.chat.id, f'Пользователь {nickname} еще не клубе')
-    elif inches <= users_bonus[message.from_user.username]:
-        users_bonus[message.from_user.username] -= inches
-        users_scale[nickname] += inches
-        bot.send_message(message.chat.id, f'Успешно накинул пользователю <b>{nickname} {inches} см.</b>',
-                         parse_mode='html')
-    elif inches > users_bonus[message.from_user.username]:
-        bot.send_message(message.chat.id, 'У вас нет столько бонусов, попробуйте еще раз')
-        return True
+    if message.from_user.username in temp_set:
+        if message.text == '/cancel':
+            bot.reply_to(message, 'Галя, отмена!')
+            temp_set.clear()
+            return True
+        text = message.text.split(' ')
+        if len(text) != 2 or not text[-1].isdigit():
+            mess = bot.send_message(message.chat.id, 'Некорректный ввод, попробуйте еще раз')
+            bot.register_next_step_handler(mess, add)
+        nickname = text[-2]
+        inches = int(text[-1])
+        if nickname not in users_bonus:
+            mess0 = bot.send_message(message.chat.id, f'Пользователь {nickname} еще не клубе, попробуйте еще раз')
+            bot.register_next_step_handler(mess0, add)
+        elif inches <= users_bonus[message.from_user.username]:
+            users_bonus[message.from_user.username] -= inches
+            users_scale[nickname] += inches
+            bot.send_message(message.chat.id, f'Успешно накинул пользователю <b>{nickname} {inches} см.</b>',
+                             parse_mode='html')
+            temp_set.clear()
+        elif inches > users_bonus[message.from_user.username]:
+            bot.send_message(message.chat.id, 'У вас нет столько бонусов, попробуйте заново')
+            temp_set.clear()
+            return True
+    else:
+        bot.register_next_step_handler(message, add)
 
 
 # отнять у кого-то см от среднего
 @bot.message_handler(commands=['minus'])
 def minus(message):
-    message1 = bot.reply_to(message, 'Введите ник и число через пробел - кому и сколько хотите убавить')
+    if message.from_user.username not in users:
+        bot.send_message(message.chat.id, 'Ты пока не в клубе, жми /start')
+        return True
+    if len(temp_set) != 0:
+        bot.send_message(message.chat.id, f'Подожди, пока {temp_set} завершит операцию')
+        return True
+    temp_set.add(message.from_user.username)
+    message1 = bot.reply_to(message, 'Введите ник и число через пробел - кому и сколько хотите убавить.'
+                                     '(Jimmythedoc 10)\n'
+                                     'Для отмены нажмите /cancel')
     bot.register_next_step_handler(message1, remove)
 
 
 def remove(message):
-    text = message.text.split(' ')
-    nickname = text[-2]
-    inches = int(text[-1])
-    if nickname not in users:
-        bot.send_message(message.chat.id, f'Пользователь {nickname} еще не клубе')
-    elif inches <= users_bonus[message.from_user.username]:
-        users_bonus[message.from_user.username] -= inches
-        users_scale[nickname] -= inches
-        bot.send_message(message.chat.id, f'Успешно убавил пользователю <b>{nickname} {inches} см.</b>',
-                         parse_mode='html')
-    elif inches > users_bonus[message.from_user.username]:
-        bot.send_message(message.chat.id, 'У вас нет столько бонусов, попробуйте еще раз')
-        return True
+    if message.from_user.username in temp_set:
+        if message.text == '/cancel':
+            bot.reply_to(message, 'Галя, отмена!')
+            temp_set.clear()
+            return True
+        text = message.text.split(' ')
+        if len(text) != 2 or not text[-1].isdigit():
+            msg = bot.send_message(message.chat.id, 'Некорректный ввод, попробуйте еще раз')
+            bot.register_next_step_handler(msg, remove)
+        nickname = text[-2]
+        inches = int(text[-1])
+        if nickname not in users:
+            mess = bot.send_message(message.chat.id, f'Пользователь {nickname} еще не клубе, попробуйте еще раз')
+            bot.register_next_step_handler(mess, remove)
+        elif inches <= users_bonus[message.from_user.username]:
+            users_bonus[message.from_user.username] -= inches
+            users_scale[nickname] -= inches
+            bot.send_message(message.chat.id, f'Успешно убавил пользователю <b>{nickname} {inches} см.</b>',
+                             parse_mode='html')
+            temp_set.clear()
+        elif inches > users_bonus[message.from_user.username]:
+            bot.send_message(message.chat.id, 'У вас нет столько бонусов, попробуйте еще раз')
+            temp_set.clear()
+            return True
+    else:
+        bot.register_next_step_handler(message, remove)
 
 
 # шкала сколько накинули
 @bot.message_handler(commands=['scale'])
 def scale(message):
+    if message.from_user.username not in users:
+        bot.send_message(message.chat.id, 'Ты пока не в клубе, жми /start')
+        return True
     if users_scale[message.from_user.username] > 0:
         bot.reply_to(message, f'Ваше отклонение от average равно <b>+{users_scale[message.from_user.username]} см</b>',
                      parse_mode='html')
