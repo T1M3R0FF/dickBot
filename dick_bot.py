@@ -3,6 +3,7 @@ import random
 import time
 import statistics
 import schedule
+from telebot import types
 from threading import Thread
 
 bot = telebot.TeleBot('5706224983:AAFvcDUZGtn1_Fa4O7RU6AdBrynZcOsCAQc')
@@ -22,11 +23,18 @@ users_scale = {}
 gays = {}
 gays_time = {}
 average_dicks = {}
-chat_id = -849170342
+gayresist_d = {}
+check_battle = {}
+battle_time = 0
+chat_id = 0
+resist_time = 0
 
 
 @bot.message_handler(commands=['help'])
 def manual(message):
+    markup = types.InlineKeyboardMarkup()
+    button1 = types.InlineKeyboardButton('Скрыть', callback_data='hide')
+    markup.add(button1)
     bot.reply_to(message, 'Здарова, пробежимся по командам.\n'
                           'Через /start ты заходишь в бота и можешь использовать его команды. /measure, как и /gay'
                           ' просто измеряют член и насколько ты гей соответственно(измерять можно раз в сутки,'
@@ -40,11 +48,21 @@ def manual(message):
                           ' накинули можно через /scale). Таким образом, среднее у тебя считается как 50-15=35 см. На'
                           ' следующий день ты сделал замер, и среднее у тебя стало 60 см, но в scale до сих пор -15,'
                           ' поэтому среднее будет 60-15=45 см. Кажется, всё.\n'
-                          ' /all замеряет сразу у всех, кто прожал старт, /getout - выход из бота. Веселитесь!')
+                          ' /all замеряет сразу у всех, кто прожал старт, /getout - выход из бота. Веселитесь!',
+                 reply_markup=markup)
+
+
+@bot.callback_query_handler(func=lambda call: True)
+def hide(call):
+    if call.message:
+        if call.data == 'hide':
+            bot.delete_message(call.message.chat.id, call.message.message_id)
 
 
 @bot.message_handler(commands=['start'])
 def start(message):
+    global chat_id
+    chat_id = message.chat.id
     if message.from_user.username in users:
         bot.reply_to(message, "Ты уже в клубе", parse_mode=None)
         return True
@@ -52,6 +70,7 @@ def start(message):
     gays.update({message.from_user.username: []})
     users_bonus.update({message.from_user.username: 0})
     users_scale.update({message.from_user.username: 0})
+    gayresist_d.update({message.from_user.username: {}})
     bot.send_message(message.chat.id, 'Welcome to the club, buddy!')
 
 
@@ -174,7 +193,7 @@ def gayaverage(message):
         sorted_gays = dict(reversed(sorted(gays.items(), key=lambda item: item[1])))
         # упаковка строки по каждому юзеру
         for key, value in sorted_gays.items():
-            total += f'@{str(key)}:  <b>{str(statistics.mean(value))} %</b>\n'
+            total += f'@{str(key)}: <b>{str(statistics.mean(value))} %</b>\n'
         bot.send_message(message.chat.id, total, parse_mode='html')
     else:
         bot.send_message(message.chat.id, 'Клуб все еще пуст, заходи /start')
@@ -239,25 +258,27 @@ def add(message):
             return True
         text = message.text.split(' ')
         if len(text) != 2 or not text[-1].isdigit():
-            mess = bot.send_message(message.chat.id, 'Некорректный ввод, попробуйте еще раз')
-            bot.register_next_step_handler(mess, add)
-        nickname = text[-2]
-        inches = int(text[-1])
-        if nickname not in users_bonus:
-            mess0 = bot.send_message(message.chat.id, f'Пользователь {nickname} еще не клубе, попробуйте еще раз')
-            bot.register_next_step_handler(mess0, add)
-        elif inches <= users_bonus[message.from_user.username]:
-            users_bonus[message.from_user.username] -= inches
-            users_scale[nickname] += inches
-            bot.send_message(message.chat.id, f'Успешно накинул пользователю <b>{nickname} {inches} см.</b>',
-                             parse_mode='html')
-            temp_set.clear()
-        elif inches > users_bonus[message.from_user.username]:
-            bot.send_message(message.chat.id, 'У вас нет столько бонусов, попробуйте заново')
+            bot.send_message(message.chat.id, 'Некорректный ввод, попробуйте еще раз /plus')
             temp_set.clear()
             return True
-    else:
-        bot.register_next_step_handler(message, add)
+        if len(text) == 2 and text[-1].isdigit():
+            nickname = text[-2]
+            inches = int(text[-1])
+            if nickname not in users_bonus:
+                mess0 = bot.send_message(message.chat.id, f'Пользователь {nickname} еще не клубе, попробуйте еще раз')
+                bot.register_next_step_handler(mess0, add)
+            elif inches <= users_bonus[message.from_user.username]:
+                users_bonus[message.from_user.username] -= inches
+                users_scale[nickname] += inches
+                bot.send_message(message.chat.id, f'Успешно накинул пользователю <b>{nickname} {inches} см.</b>',
+                                 parse_mode='html')
+                temp_set.clear()
+            elif inches > users_bonus[message.from_user.username]:
+                bot.send_message(message.chat.id, 'У вас нет столько бонусов, попробуйте заново')
+                temp_set.clear()
+                return True
+        else:
+            bot.register_next_step_handler(message, add)
 
 
 # отнять у кого-то см от среднего
@@ -267,16 +288,18 @@ def minus(message):
         bot.send_message(message.chat.id, 'Ты пока не в клубе, жми /start')
         return True
     if len(temp_set) != 0:
-        bot.send_message(message.chat.id, f'Подожди, пока {temp_set} завершит операцию')
-        return True
-    temp_set.add(message.from_user.username)
-    message1 = bot.reply_to(message, 'Введите ник и число через пробел - кому и сколько хотите убавить.'
-                                     '(Jimmythedoc 10)\n'
-                                     'Для отмены нажмите /cancel')
-    bot.register_next_step_handler(message1, remove)
+        msg = bot.send_message(message.chat.id, f'Подожди, пока {temp_set} завершит операцию')
+        bot.register_next_step_handler(msg, remove)
+    if message.from_user.username in users:
+        temp_set.add(message.from_user.username)
+        message1 = bot.reply_to(message, 'Введите ник и число через пробел - кому и сколько хотите убавить.'
+                                         '(Jimmythedoc 10)\n'
+                                         'Для отмены нажмите /cancel')
+        bot.register_next_step_handler(message1, remove)
 
 
 def remove(message):
+    global resist_time
     if message.from_user.username in temp_set:
         if message.text == '/cancel':
             bot.reply_to(message, 'Галя, отмена!')
@@ -284,25 +307,29 @@ def remove(message):
             return True
         text = message.text.split(' ')
         if len(text) != 2 or not text[-1].isdigit():
-            msg = bot.send_message(message.chat.id, 'Некорректный ввод, попробуйте еще раз')
-            bot.register_next_step_handler(msg, remove)
-        nickname = text[-2]
-        inches = int(text[-1])
-        if nickname not in users:
-            mess = bot.send_message(message.chat.id, f'Пользователь {nickname} еще не клубе, попробуйте еще раз')
-            bot.register_next_step_handler(mess, remove)
-        elif inches <= users_bonus[message.from_user.username]:
-            users_bonus[message.from_user.username] -= inches
-            users_scale[nickname] -= inches
-            bot.send_message(message.chat.id, f'Успешно убавил пользователю <b>{nickname} {inches} см.</b>',
-                             parse_mode='html')
-            temp_set.clear()
-        elif inches > users_bonus[message.from_user.username]:
-            bot.send_message(message.chat.id, 'У вас нет столько бонусов, попробуйте еще раз')
+            bot.send_message(message.chat.id, 'Некорректный ввод, попробуйте еще раз /minus')
             temp_set.clear()
             return True
-    else:
-        bot.register_next_step_handler(message, remove)
+        if len(text) == 2 and text[-1].isdigit():
+            nickname = text[-2]
+            inches = int(text[-1])
+            if nickname not in users:
+                mess = bot.send_message(message.chat.id, f'Пользователь {nickname} еще не клубе, попробуйте еще раз')
+                bot.register_next_step_handler(mess, remove)
+            elif inches <= users_bonus[message.from_user.username]:
+                users_bonus[message.from_user.username] -= inches
+                users_scale[nickname] -= inches
+                bot.send_message(message.chat.id, f'Успешно убавил пользователю <b>{nickname} {inches} см.</b>',
+                                 parse_mode='html')
+                resist_time = time.perf_counter()
+                gayresist_d[nickname].setdefault(message.from_user.username, []).append(inches)
+                temp_set.clear()
+            elif inches > users_bonus[message.from_user.username]:
+                bot.send_message(message.chat.id, 'У вас нет столько бонусов, попробуйте еще раз')
+                temp_set.clear()
+                return True
+        else:
+            bot.register_next_step_handler(message, remove)
 
 
 # шкала сколько накинули
@@ -317,6 +344,81 @@ def scale(message):
     else:
         bot.reply_to(message, f'Ваше отклонение от average равно <b>{users_scale[message.from_user.username]} см</b>',
                      parse_mode='html')
+
+
+@bot.message_handler(commands=['gayresist'])
+def gayresist(message):
+    # проверка на дурака
+    if message.from_user.username not in users:
+        bot.send_message(message.chat.id, 'Ты пока не в клубе, жми /start')
+        return True
+    global battle_time
+    # сутки не прошли
+    if message.from_user.username in check_battle and check_battle[message.from_user.username] - time.perf_counter() \
+            < 86400:
+        bot.reply_to(message, 'баттлиться можно раз в сутки')
+        del check_battle[message.from_user.username]
+        return True
+    elif message.from_user.username not in check_battle:
+        battle_time = time.perf_counter()
+        check_battle.update({message.from_user.username: battle_time})
+    # сутки прошли
+    elif message.from_user.username in check_battle and\
+            check_battle[message.from_user.username] - time.perf_counter() >= 86400:
+        del check_battle[message.from_user.username]
+        battle_time = time.perf_counter()
+        check_battle.update({message.from_user.username: battle_time})
+    if resist_time - time.perf_counter() >= 86400:
+        del gayresist_d[message.from_user.username]
+        return True
+    msg = 'Сегодня вам убавили:\n'
+    for key, value in gayresist_d[message.from_user.username].items():
+        msg += f'@{key}: <b>{sum(value)} см</b>\n'
+    if message.from_user.username not in gays_time or (
+            len(gays_time) != 0 and time.perf_counter() - gays_time[message.from_user.username] >= 86400):
+        bot.send_message(message.chat.id, 'Кажется, нужно обновить данные, жми /gay и возвращайся')
+        return True
+    if msg == 'Сегодня вам убавили:\n':
+        bot.send_message(message.chat.id, 'За сегодня вам никто нисколько не убавил')
+        del check_battle[message.from_user.username]
+        return True
+    elif len(gays_time) != 0 and len(gays[message.from_user.username]) != 0 \
+            and time.perf_counter() - gays_time[message.from_user.username] < 86400:
+        markup = types.InlineKeyboardMarkup(row_width=2)
+        button1 = types.InlineKeyboardButton('Рискнуть', callback_data='risk')
+        button2 = types.InlineKeyboardButton('Отмена', callback_data='cancel')
+        markup.add(button1, button2)
+        bot.reply_to(message, 'Запускаю гейрезист...')
+        time.sleep(1)
+        bot.send_message(message.chat.id, msg, parse_mode='html')
+        time.sleep(1)
+        bot.send_message(message.chat.id, f'Вероятность резиста: {gays[message.from_user.username][-1]} %',
+                         reply_markup=markup)
+
+
+@bot.callback_query_handler(func=lambda call: True)
+def callback_inline(call):
+    if call.message:
+        if call.data == 'risk':
+            msg = bot.reply_to(call.message, 'Окей, впиши сюда ник, с кем будешь баттлиться')
+            bot.register_next_step_handler(msg, battle)
+        elif call.data == 'cancel':
+            bot.send_message(call.message.chat.id, 'Отменил')
+            return True
+
+
+def battle(message):
+    if message.text not in gayresist_d[message.from_user.username].keys():
+        msg = bot.reply_to(message, 'Такого ника нет, попробуй еще раз')
+        bot.register_next_step_handler(msg, battle)
+    else:
+        if random.random() < gays[message.from_user.username][-1] / 100:
+            bot.send_message(message.chat.id, f'Сработало! То число, которое вам накинул {message.text},'
+                                              f' отскочило от тебя и попало в него')
+            users_scale[message.text] -= sum(gayresist_d[message.from_user.username][message.text])
+            users_scale[message.from_user.username] += sum(gayresist_d[message.from_user.username][message.text])
+        else:
+            bot.send_message(message.chat.id, 'Не получилось:(\nВсе осталось по-прежнему')
 
 
 # секретный дикпик
