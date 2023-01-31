@@ -15,7 +15,7 @@ dicks = ['Твоя дилдосина', 'Твоя елда', 'Твой пени�
          'Твой член', 'Твой хоботок', 'Твой маленький друг']
 emojis = [' 😏', ' 😱', ' 😁', ' 😯', ' 🥰', ' 🤩', ' 😳', ' 😨', ' 😈', ' 🍌', ' 🌽', ' 🍆']
 
-temp_set = set()  # для проверки айди пользователя в plus() и minus()
+temp_set = []  # для проверки айди пользователя в plus() и minus()
 users = {}
 users_time = {}
 users_bonus = {}
@@ -50,13 +50,6 @@ def manual(message):
                           ' поэтому среднее будет 60-15=45 см. Кажется, всё.\n'
                           ' /all замеряет сразу у всех, кто прожал старт, /getout - выход из бота. Веселитесь!',
                  reply_markup=markup)
-
-
-@bot.callback_query_handler(func=lambda call: True)
-def hide(call):
-    if call.message:
-        if call.data == 'hide':
-            bot.delete_message(call.message.chat.id, call.message.message_id)
 
 
 @bot.message_handler(commands=['start'])
@@ -240,10 +233,10 @@ def plus(message):
         bot.send_message(message.chat.id, 'Ты пока не в клубе, жми /start')
         return True
     if len(temp_set) != 0:
-        msg = bot.send_message(message.chat.id, f'Подожди, пока {temp_set} завершит операцию')
+        msg = bot.send_message(message.chat.id, f'Подожди, пока {temp_set[0]} завершит операцию')
         bot.register_next_step_handler(msg, add)
     else:
-        temp_set.add(name)
+        temp_set.append(name)
         msg1 = bot.send_message(message.chat.id, 'Введите ник и число через пробел - кому и сколько хотите накинуть.'
                                                  '(Jimmythedoc 10)\n'
                                                  'Для отмены нажмите /cancel')
@@ -288,10 +281,10 @@ def minus(message):
         bot.send_message(message.chat.id, 'Ты пока не в клубе, жми /start')
         return True
     if len(temp_set) != 0:
-        msg = bot.send_message(message.chat.id, f'Подожди, пока {temp_set} завершит операцию')
+        msg = bot.send_message(message.chat.id, f'Подожди, пока {temp_set[0]} завершит операцию')
         bot.register_next_step_handler(msg, remove)
     if message.from_user.username in users:
-        temp_set.add(message.from_user.username)
+        temp_set.append(message.from_user.username)
         message1 = bot.reply_to(message, 'Введите ник и число через пробел - кому и сколько хотите убавить.'
                                          '(Jimmythedoc 10)\n'
                                          'Для отмены нажмите /cancel')
@@ -377,6 +370,7 @@ def gayresist(message):
     if message.from_user.username not in gays_time or (
             len(gays_time) != 0 and time.perf_counter() - gays_time[message.from_user.username] >= 86400):
         bot.send_message(message.chat.id, 'Кажется, нужно обновить данные, жми /gay и возвращайся')
+        del check_battle[message.from_user.username]
         return True
     if msg == 'Сегодня вам убавили:\n':
         bot.send_message(message.chat.id, 'За сегодня вам никто нисколько не убавил')
@@ -405,6 +399,8 @@ def callback_inline(call):
         elif call.data == 'cancel':
             bot.send_message(call.message.chat.id, 'Отменил')
             return True
+        elif call.data == 'hide':
+            bot.delete_message(call.message.chat.id, call.message.message_id)
 
 
 def battle(message):
