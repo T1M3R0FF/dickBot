@@ -49,7 +49,9 @@ def manual(message):
                           ' среднее значение у тебя 50 см, но тебе в сумме накинули на -15(посмотреть, сколько тебе'
                           ' накинули можно через /scale). Таким образом, среднее у тебя считается как 50-15=35 см. На'
                           ' следующий день ты сделал замер, и среднее у тебя стало 60 см, но в scale до сих пор -15,'
-                          ' поэтому среднее будет 60-15=45 см. Кажется, всё.\n'
+                          ' поэтому среднее будет 60-15=45 см. Так же, если вам кто то уменьшил за сегодняшний день, '
+                          'можно попытаться стереть этот минус у себя и накинуть вдвое больше тому, кто вам накинул '
+                          'через /gayresist. Если не получится, минус, который у тебя, остается. Кажется, всё.\n'
                           ' /all замеряет сразу у всех, кто прожал старт, /getout - выход из бота. Веселитесь!',
                  reply_markup=markup)
 
@@ -57,9 +59,9 @@ def manual(message):
 @bot.message_handler(commands=['start'])
 def start(message):
     global chat_id
-    if str(message.chat.id) != "-849170342":
+    if str(message.chat.id) != "-849170342":  # чтобы бот работал только в 1 чате
         return True
-    name = '@' + message.from_user.username
+    name = '@' + str(message.from_user.username)
     chat_id = message.chat.id
     if message.from_user.username in users:
         bot.reply_to(message, "Ты уже в клубе", parse_mode=None)
@@ -74,7 +76,7 @@ def start(message):
 
 @bot.message_handler(commands=['measure'])
 def measure(message):
-    name = '@' + message.from_user.username
+    name = '@' + str(message.from_user.username)
     # проверка на дурака
     if name not in users:
         bot.send_message(message.chat.id, 'Ты пока не в клубе, жми /start')
@@ -103,7 +105,7 @@ def measure(message):
 
 @bot.message_handler(commands=['average'])
 def average(message):
-    name = '@' + message.from_user.username
+    name = '@' + str(message.from_user.username)
     # проверка на дурака
     if name not in users:
         bot.send_message(message.chat.id, 'Ты пока не в клубе, жми /start')
@@ -123,7 +125,7 @@ def average(message):
 # замер у всех сразу
 @bot.message_handler(commands=['all'])
 def all_in(message):
-    name = '@' + message.from_user.username
+    name = '@' + str(message.from_user.username)
     # проверка на дурака
     if name not in users:
         bot.send_message(message.chat.id, 'Ты пока не в клубе, жми /start')
@@ -159,7 +161,7 @@ def all_in(message):
 # гейметр
 @bot.message_handler(commands=['gay'])
 def gay(message):
-    name = '@' + message.from_user.username
+    name = '@' + str(message.from_user.username)
     # проверка на дурака
     if name not in users:
         bot.send_message(message.chat.id, 'Ты пока не в клубе, жми /start')
@@ -205,7 +207,7 @@ def gayaverage(message):
 # выход из бота
 @bot.message_handler(commands=['getout'])
 def getout(message):
-    name = '@' + message.from_user.username
+    name = '@' + str(message.from_user.username)
     if name not in users:
         bot.send_message(message.chat.id, 'Ты и так не в клубе, выйти не получится')
         return True
@@ -229,7 +231,7 @@ def getout(message):
 # проверка баланса
 @bot.message_handler(commands=['balance'])
 def balance(message):
-    name = '@' + message.from_user.username
+    name = '@' + str(message.from_user.username)
     if name not in users:
         bot.send_message(message.chat.id, 'Ты пока не в клубе, жми /start')
         return True
@@ -240,7 +242,7 @@ def balance(message):
 # прибавить кому-то см к среднему
 @bot.message_handler(commands=['plus'])
 def plus(message):
-    name = '@' + message.from_user.username
+    name = '@' + str(message.from_user.username)
     if name not in users:
         bot.send_message(message.chat.id, 'Ты пока не в клубе, жми /start')
         return True
@@ -256,7 +258,7 @@ def plus(message):
 
 
 def add(message):
-    name = '@' + message.from_user.username
+    name = '@' + str(message.from_user.username)
     if name in temp_set and (message.text == '/cancel' or message.text == '/cancel@Mr_dick_bot'):
         bot.reply_to(message, 'Галя, отмена!')
         temp_set.clear()
@@ -281,7 +283,7 @@ def add(message):
                 gayresist_d[nickname].setdefault(name, []).append(int(inches))
                 temp_set.clear()
             elif inches > users_bonus[name]:
-                bot.send_message(message.chat.id, 'У вас нет столько бонусов, попробуйте заново')
+                bot.send_message(message.chat.id, 'У вас нет столько бонусов, попробуйте заново /plus')
                 temp_set.clear()
                 return True
     elif name not in temp_set:
@@ -291,7 +293,7 @@ def add(message):
 # отнять у кого-то см от среднего
 @bot.message_handler(commands=['minus'])
 def minus(message):
-    name = '@' + message.from_user.username
+    name = '@' + str(message.from_user.username)
     if name not in users:
         bot.send_message(message.chat.id, 'Ты пока не в клубе, жми /start')
         return True
@@ -308,7 +310,7 @@ def minus(message):
 
 def remove(message):
     global resist_time
-    name = '@' + message.from_user.username
+    name = '@' + str(message.from_user.username)
     if name in temp_set and (message.text == '/cancel' or message.text == '/cancel@Mr_dick_bot'):
         bot.reply_to(message, 'Галя, отмена!')
         temp_set.clear()
@@ -334,7 +336,7 @@ def remove(message):
                 gayresist_d[nickname].setdefault(name, []).append(int('-' + str(inches)))
                 temp_set.clear()
             elif inches > users_bonus[name]:
-                bot.send_message(message.chat.id, 'У вас нет столько бонусов, попробуйте еще раз')
+                bot.send_message(message.chat.id, 'У вас нет столько бонусов, попробуйте еще раз /minus')
                 temp_set.clear()
                 return True
     elif name not in temp_set:
@@ -344,7 +346,7 @@ def remove(message):
 # шкала сколько накинули
 @bot.message_handler(commands=['scale'])
 def scale(message):
-    name = '@' + message.from_user.username
+    name = '@' + str(message.from_user.username)
     if name not in users:
         bot.send_message(message.chat.id, 'Ты пока не в клубе, жми /start')
         return True
@@ -358,7 +360,7 @@ def scale(message):
 
 @bot.message_handler(commands=['gayresist'])
 def gayresist(message):
-    name = '@' + message.from_user.username
+    name = '@' + str(message.from_user.username)
     # проверка на дурака
     if name not in users:
         bot.send_message(message.chat.id, 'Ты пока не в клубе, жми /start')
@@ -424,7 +426,7 @@ def callback_inline(call):
 
 
 def battle(message):
-    name = '@' + message.from_user.username
+    name = '@' + str(message.from_user.username)
     if message.text not in gayresist_d[name].keys():
         msg = bot.reply_to(message, 'Такого ника нет, попробуй еще раз')
         bot.register_next_step_handler(msg, battle)
@@ -432,7 +434,7 @@ def battle(message):
         if random.random() < gays[name][-1] / 100:
             bot.send_message(message.chat.id, f'Сработало! То число, которое вам накинул {message.text},'
                                               f' отскочило от тебя и попало в него')
-            users_scale[message.text] -= sum(gayresist_d[name][message.text])
+            users_scale[message.text] -= 2 * sum(gayresist_d[name][message.text])
             users_scale[name] += sum(gayresist_d[name][message.text])
         else:
             bot.send_message(message.chat.id, 'Не получилось:(\nВсе осталось по-прежнему')
