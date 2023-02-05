@@ -29,6 +29,7 @@ id_check = {}  # gayresist
 battle_time = 0
 chat_id = 0
 resist_time = 0
+summ = 0
 
 
 @bot.message_handler(commands=['help'])
@@ -277,6 +278,7 @@ def add(message):
                 users_scale[nickname] += inches
                 bot.send_message(message.chat.id, f'Успешно накинул пользователю {nickname} <b>{inches} см.</b>',
                                  parse_mode='html')
+                gayresist_d[nickname].setdefault(name, []).append(int(inches))
                 temp_set.clear()
             elif inches > users_bonus[name]:
                 bot.send_message(message.chat.id, 'У вас нет столько бонусов, попробуйте заново')
@@ -329,7 +331,7 @@ def remove(message):
                 bot.send_message(message.chat.id, f'Успешно убавил пользователю {nickname} <b>{inches} см.</b>',
                                  parse_mode='html')
                 resist_time = time.perf_counter()
-                gayresist_d[nickname].setdefault(name, []).append(inches)
+                gayresist_d[nickname].setdefault(name, []).append(int('-' + str(inches)))
                 temp_set.clear()
             elif inches > users_bonus[name]:
                 bot.send_message(message.chat.id, 'У вас нет столько бонусов, попробуйте еще раз')
@@ -361,7 +363,7 @@ def gayresist(message):
     if name not in users:
         bot.send_message(message.chat.id, 'Ты пока не в клубе, жми /start')
         return True
-    global battle_time
+    global battle_time, summ
     # сутки не прошли
     if name in check_battle and check_battle[name] - time.perf_counter() < 86400:
         bot.reply_to(message, 'баттлиться можно раз в сутки')
@@ -381,17 +383,16 @@ def gayresist(message):
     msg = 'Сегодня вам убавили:\n'
     for key, value in gayresist_d[name].items():
         msg += f'{key}: <b>{sum(value)} см</b>\n'
-    if name not in gays_time or (
-            len(gays_time) != 0 and time.perf_counter() - gays_time[name] >= 86400):
-        bot.send_message(message.chat.id, 'Кажется, нужно обновить данные, жми /gay и возвращайся')
-        del check_battle[name]
-        return True
+        summ = sum(value)
     if msg == 'Сегодня вам убавили:\n':
         bot.send_message(message.chat.id, 'За сегодня вам никто нисколько не убавил')
         del check_battle[name]
         return True
-    elif len(gays_time) != 0 and len(gays[name]) != 0 \
-            and time.perf_counter() - gays_time[name] < 86400:
+    elif name not in gays_time or (len(gays_time) != 0 and time.perf_counter() - gays_time[name] >= 86400):
+        bot.send_message(message.chat.id, 'Кажется, нужно обновить данные, жми /gay и возвращайся')
+        del check_battle[name]
+        return True
+    elif len(gays_time) != 0 and len(gays[name]) != 0 and time.perf_counter() - gays_time[name] < 86400 and summ < 0:
         markup = types.InlineKeyboardMarkup(row_width=2)
         button1 = types.InlineKeyboardButton('Рискнуть', callback_data='risk')
         button2 = types.InlineKeyboardButton('Отмена', callback_data='cancel')
@@ -403,6 +404,8 @@ def gayresist(message):
         send_message = bot.send_message(message.chat.id, f'Вероятность резиста: {gays[name][-1]} %',
                                         reply_markup=markup)
         id_check.update({message.from_user.id: send_message.message_id})
+    elif len(gays_time) != 0 and len(gays[name]) != 0 and time.perf_counter() - gays_time[name] < 86400 and summ >= 0:
+        bot.reply_to(message, 'В минус тебе сегодня никто не накинул')
 
 
 @bot.callback_query_handler(func=lambda call: True)
