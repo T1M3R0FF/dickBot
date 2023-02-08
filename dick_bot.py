@@ -6,7 +6,7 @@ import schedule
 from telebot import types
 from threading import Thread
 
-bot = telebot.TeleBot('5706224983:AAFvcDUZGtn1_Fa4O7RU6AdBrynZcOsCAQc')
+bot = telebot.TeleBot('5706224983:AAH0u-lXIU5PMesCC8BZ-3lngx_RacONyfo')
 
 dicks = ['Твоя дилдосина', 'Твоя елда', 'Твой пенис', 'Твой хер',
          'Твоя залупа', 'Твой хуй', 'Твоя шишка', 'Твой нагибатель',
@@ -24,9 +24,10 @@ gays = {}
 gays_time = {}
 average_dicks = {}
 gayresist_d = {}
-check_battle = {}
 id_check = {}  # gayresist
-battle_time = 0
+check_battle = {}
+check_add = {}
+check_remove = {}
 chat_id = 0
 resist_time = 0
 summ = 0
@@ -52,7 +53,7 @@ def manual(message):
                           ' поэтому среднее будет 60-15=45 см. Так же, если вам кто то уменьшил за сегодняшний день, '
                           'можно попытаться стереть этот минус у себя и накинуть вдвое больше тому, кто вам накинул '
                           'через /gayresist. Если не получится, минус, который у тебя, остается. Кажется, всё.\n'
-                          ' /all замеряет сразу у всех, кто прожал старт, /getout - выход из бота. Веселитесь!',
+                          ' /all замеряет сразу у всех, кто прожал старт. Веселитесь!',
                  reply_markup=markup)
 
 
@@ -204,30 +205,6 @@ def gayaverage(message):
         bot.send_message(message.chat.id, 'Клуб все еще пуст, заходи /start')
 
 
-# выход из бота
-@bot.message_handler(commands=['getout'])
-def getout(message):
-    name = '@' + str(message.from_user.username)
-    if name not in users:
-        bot.send_message(message.chat.id, 'Ты и так не в клубе, выйти не получится')
-        return True
-    else:
-        if name in users_time:
-            del users_time[name]
-
-        if name in gays_time:
-            del gays_time[name]
-
-        if name in average_dicks:
-            del average_dicks[name]
-
-        del gays[name]
-        del users[name]
-        del users_bonus[name]
-        del users_scale[name]
-        bot.send_message(message.chat.id, f'{name} изволил покинуть наш клуб')
-
-
 # проверка баланса
 @bot.message_handler(commands=['balance'])
 def balance(message):
@@ -270,22 +247,74 @@ def add(message):
             temp_set.clear()
             return True
         if len(text) == 2 and text[-1].isdigit():
-            nickname = text[-2]
-            inches = int(text[-1])
-            if nickname not in users_bonus:
-                mess0 = bot.send_message(message.chat.id, f'Пользователь {nickname} еще не клубе, попробуйте еще раз')
-                bot.register_next_step_handler(mess0, add)
-            elif inches <= users_bonus[name]:
-                users_bonus[name] -= inches
-                users_scale[nickname] += inches
-                bot.send_message(message.chat.id, f'Успешно накинул пользователю {nickname} <b>{inches} см.</b>',
-                                 parse_mode='html')
-                gayresist_d[nickname].setdefault(name, []).append(int(inches))
-                temp_set.clear()
-            elif inches > users_bonus[name]:
-                bot.send_message(message.chat.id, 'У вас нет столько бонусов, попробуйте заново /plus')
-                temp_set.clear()
-                return True
+            if name not in check_add:
+                check_add.update({name: {message.text[-2]: 0}})
+                if check_add[name][message.text[-2]] - time.perf_counter() >= 86400 or \
+                        check_add[name][message.text[-2]] == 0:
+                    nickname = text[-2]
+                    inches = int(text[-1])
+                    if nickname not in users_bonus:
+                        mess0 = bot.send_message(message.chat.id, f'Пользователь {nickname} еще не клубе, попробуйте еще раз')
+                        bot.register_next_step_handler(mess0, add)
+                    elif inches <= users_bonus[name]:
+                        users_bonus[name] -= inches
+                        users_scale[nickname] += inches
+                        bot.send_message(message.chat.id, f'Успешно накинул пользователю {nickname} <b>{inches} см.</b>',
+                                         parse_mode='html')
+                        gayresist_d[nickname].setdefault(name, []).append(int(inches))
+                        battle_time = time.perf_counter()
+                        check_add.update({name: {message.text[-2]: battle_time}})
+                        temp_set.clear()
+                    elif inches > users_bonus[name]:
+                        bot.send_message(message.chat.id, 'У вас нет столько бонусов, попробуйте заново /plus')
+                        temp_set.clear()
+                        return True
+            else:
+                if message.text[-2] in check_add[name].keys():
+                    if check_add[name][message.text[-2]] - time.perf_counter() >= 86400:
+                        battle_time = time.perf_counter()
+                        check_add.update({name: {message.text[-2]: battle_time}})
+                        nickname = text[-2]
+                        inches = int(text[-1])
+                        if nickname not in users_bonus:
+                            mess0 = bot.send_message(message.chat.id,
+                                                     f'Пользователь {nickname} еще не клубе, попробуйте еще раз')
+                            bot.register_next_step_handler(mess0, add)
+                        elif inches <= users_bonus[name]:
+                            users_bonus[name] -= inches
+                            users_scale[nickname] += inches
+                            bot.send_message(message.chat.id,
+                                             f'Успешно накинул пользователю {nickname} <b>{inches} см.</b>',
+                                             parse_mode='html')
+                            gayresist_d[nickname].setdefault(name, []).append(int(inches))
+                            temp_set.clear()
+                        elif inches > users_bonus[name]:
+                            bot.send_message(message.chat.id, 'У вас нет столько бонусов, попробуйте заново /plus')
+                            temp_set.clear()
+                            return True
+                    else:
+                        bot.reply_to(message, 'Сегодня ты уже ему накинул')
+                else:
+                    battle_time = time.perf_counter()
+                    check_add.update({name: {message.text[-2]: battle_time}})
+                    nickname = text[-2]
+                    inches = int(text[-1])
+                    if nickname not in users_bonus:
+                        mess0 = bot.send_message(message.chat.id,
+                                                 f'Пользователь {nickname} еще не клубе, попробуйте еще раз')
+                        bot.register_next_step_handler(mess0, add)
+                    elif inches <= users_bonus[name]:
+                        users_bonus[name] -= inches
+                        users_scale[nickname] += inches
+                        bot.send_message(message.chat.id,
+                                         f'Успешно накинул пользователю {nickname} <b>{inches} см.</b>',
+                                         parse_mode='html')
+                        gayresist_d[nickname].setdefault(name, []).append(int(inches))
+                        temp_set.clear()
+                    elif inches > users_bonus[name]:
+                        bot.send_message(message.chat.id, 'У вас нет столько бонусов, попробуйте заново /plus')
+                        temp_set.clear()
+                        return True
     elif name not in temp_set:
         bot.register_next_step_handler(message, add)
 
@@ -322,23 +351,74 @@ def remove(message):
             temp_set.clear()
             return True
         if len(text) == 2 and text[-1].isdigit():
-            nickname = text[-2]
-            inches = int(text[-1])
-            if nickname not in users:
-                mess = bot.send_message(message.chat.id, f'Пользователь {nickname} еще не клубе, попробуйте еще раз')
-                bot.register_next_step_handler(mess, remove)
-            elif inches <= users_bonus[name]:
-                users_bonus[name] -= inches
-                users_scale[nickname] -= inches
-                bot.send_message(message.chat.id, f'Успешно убавил пользователю {nickname} <b>{inches} см.</b>',
-                                 parse_mode='html')
-                resist_time = time.perf_counter()
-                gayresist_d[nickname].setdefault(name, []).append(int('-' + str(inches)))
-                temp_set.clear()
-            elif inches > users_bonus[name]:
-                bot.send_message(message.chat.id, 'У вас нет столько бонусов, попробуйте еще раз /minus')
-                temp_set.clear()
-                return True
+            if name not in check_remove:
+                check_remove.update({name: {message.text[-2]: 0}})
+                if check_remove[name][message.text[-2]] - time.perf_counter() >= 86400 or \
+                        check_remove[name][message.text[-2]] == 0:
+                    nickname = text[-2]
+                    inches = int(text[-1])
+                    if nickname not in users:
+                        mess = bot.send_message(message.chat.id, f'Пользователь {nickname} еще не клубе, попробуйте еще раз')
+                        bot.register_next_step_handler(mess, remove)
+                    elif inches <= users_bonus[name]:
+                        users_bonus[name] -= inches
+                        users_scale[nickname] -= inches
+                        bot.send_message(message.chat.id, f'Успешно убавил пользователю {nickname} <b>{inches} см.</b>',
+                                         parse_mode='html')
+                        resist_time = time.perf_counter()
+                        gayresist_d[nickname].setdefault(name, []).append(int('-' + str(inches)))
+                        temp_set.clear()
+                    elif inches > users_bonus[name]:
+                        bot.send_message(message.chat.id, 'У вас нет столько бонусов, попробуйте еще раз /minus')
+                        temp_set.clear()
+                        return True
+            else:
+                if message.text[-2] in check_remove[name].keys():
+                    if check_remove[name][message.text[-2]] - time.perf_counter() >= 86400:
+                        battle_time = time.perf_counter()
+                        check_remove.update({name: {message.text[-2]: battle_time}})
+                        nickname = text[-2]
+                        inches = int(text[-1])
+                        if nickname not in users:
+                            mess = bot.send_message(message.chat.id,
+                                                    f'Пользователь {nickname} еще не клубе, попробуйте еще раз')
+                            bot.register_next_step_handler(mess, remove)
+                        elif inches <= users_bonus[name]:
+                            users_bonus[name] -= inches
+                            users_scale[nickname] -= inches
+                            bot.send_message(message.chat.id,
+                                             f'Успешно убавил пользователю {nickname} <b>{inches} см.</b>',
+                                             parse_mode='html')
+                            resist_time = time.perf_counter()
+                            gayresist_d[nickname].setdefault(name, []).append(int('-' + str(inches)))
+                            temp_set.clear()
+                        elif inches > users_bonus[name]:
+                            bot.send_message(message.chat.id, 'У вас нет столько бонусов, попробуйте еще раз /minus')
+                            temp_set.clear()
+                            return True
+                    else:
+                        bot.reply_to(message, 'Сегодня ты уже ему убавил')
+                else:
+                    battle_time = time.perf_counter()
+                    check_remove.update({name: {message.text[-2]: battle_time}})
+                    nickname = text[-2]
+                    inches = int(text[-1])
+                    if nickname not in users:
+                        mess = bot.send_message(message.chat.id,
+                                                f'Пользователь {nickname} еще не клубе, попробуйте еще раз')
+                        bot.register_next_step_handler(mess, remove)
+                    elif inches <= users_bonus[name]:
+                        users_bonus[name] -= inches
+                        users_scale[nickname] -= inches
+                        bot.send_message(message.chat.id, f'Успешно убавил пользователю {nickname} <b>{inches} см.</b>',
+                                         parse_mode='html')
+                        resist_time = time.perf_counter()
+                        gayresist_d[nickname].setdefault(name, []).append(int('-' + str(inches)))
+                        temp_set.clear()
+                    elif inches > users_bonus[name]:
+                        bot.send_message(message.chat.id, 'У вас нет столько бонусов, попробуйте еще раз /minus')
+                        temp_set.clear()
+                        return True
     elif name not in temp_set:
         bot.register_next_step_handler(message, remove)
 
@@ -365,20 +445,8 @@ def gayresist(message):
     if name not in users:
         bot.send_message(message.chat.id, 'Ты пока не в клубе, жми /start')
         return True
-    global battle_time, summ
-    # сутки не прошли
-    if name in check_battle and check_battle[name] - time.perf_counter() < 86400:
-        bot.reply_to(message, 'баттлиться можно раз в сутки')
-        del check_battle[name]
-        return True
-    elif name not in check_battle:
-        battle_time = time.perf_counter()
-        check_battle.update({name: battle_time})
-    # сутки прошли
-    elif name in check_battle and check_battle[name] - time.perf_counter() >= 86400:
-        del check_battle[name]
-        battle_time = time.perf_counter()
-        check_battle.update({name: battle_time})
+    global summ
+    # чистка словаря 'сегодня вам накинул'
     if resist_time - time.perf_counter() >= 86400:
         del gayresist_d[name]
         return True
@@ -388,11 +456,9 @@ def gayresist(message):
         summ = sum(value)
     if msg == 'Сегодня вам убавили:\n':
         bot.send_message(message.chat.id, 'За сегодня вам никто нисколько не убавил')
-        del check_battle[name]
         return True
     elif name not in gays_time or (len(gays_time) != 0 and time.perf_counter() - gays_time[name] >= 86400):
         bot.send_message(message.chat.id, 'Кажется, нужно обновить данные, жми /gay и возвращайся')
-        del check_battle[name]
         return True
     elif len(gays_time) != 0 and len(gays[name]) != 0 and time.perf_counter() - gays_time[name] < 86400 and summ < 0:
         markup = types.InlineKeyboardMarkup(row_width=2)
@@ -418,7 +484,6 @@ def callback_inline(call):
         msg = bot.reply_to(call.message, 'Окей, впиши сюда ник, с кем будешь баттлиться(@Jimmythedoc)')
         bot.register_next_step_handler(msg, battle)
     elif call.data == 'cancel' and id_check.get(call.from_user.id, 0) == call.message.message_id:
-        check_battle.pop('@' + call.from_user.username)
         bot.send_message(call.message.chat.id, 'Отменил')
         return True
     elif call.data == 'hide':
@@ -427,17 +492,45 @@ def callback_inline(call):
 
 def battle(message):
     name = '@' + str(message.from_user.username)
-    if message.text not in gayresist_d[name].keys():
-        msg = bot.reply_to(message, 'Такого ника нет, попробуй еще раз')
-        bot.register_next_step_handler(msg, battle)
+    if name not in check_battle:
+        check_battle.update({name: {message.text: 0}})
+        if check_battle[name][message.text] - time.perf_counter() >= 86400 or \
+                check_battle[name][message.text] == 0:
+            if random.random() < gays[name][-1] / 100:
+                bot.send_message(message.chat.id, f'Сработало! То число, которое вам накинул {message.text},'
+                                                  f' отскочило от тебя и попало в него')
+                users_scale[message.text] -= 2 * sum(gayresist_d[name][message.text])
+                users_scale[name] += sum(gayresist_d[name][message.text])
+                battle_time = time.perf_counter()
+                check_battle.update({name: {message.text: battle_time}})
+            else:
+                bot.send_message(message.chat.id, 'Не получилось:(\nЭтот минус вам удвоился')
+                users_scale[name] += sum(gayresist_d[name][message.text])
     else:
-        if random.random() < gays[name][-1] / 100:
-            bot.send_message(message.chat.id, f'Сработало! То число, которое вам накинул {message.text},'
-                                              f' отскочило от тебя и попало в него')
-            users_scale[message.text] -= 2 * sum(gayresist_d[name][message.text])
-            users_scale[name] += sum(gayresist_d[name][message.text])
+        if message.text in check_battle[name].keys():
+            if check_battle[name][message.text] - time.perf_counter() >= 86400:
+                battle_time = time.perf_counter()
+                check_battle.update({name: {message.text: battle_time}})
+            else:
+                bot.reply_to(message, 'Сегодня ты уже с ним баттлился')
         else:
-            bot.send_message(message.chat.id, 'Не получилось:(\nВсе осталось по-прежнему')
+            battle_time = time.perf_counter()
+            check_battle.update({name: {message.text: battle_time}})
+        if message.text not in gayresist_d[name].keys():
+            msg = bot.reply_to(message, 'Такого ника нет, попробуй еще раз')
+            bot.register_next_step_handler(msg, battle)
+        elif message.text in gayresist_d[name].keys() and\
+                ((message.text in check_battle[name].keys() and
+                  check_battle[name][message.text] - time.perf_counter() >= 86400) or
+                 (message.text not in check_battle[name].keys())):
+            if random.random() < gays[name][-1] / 100:
+                bot.send_message(message.chat.id, f'Сработало! То число, которое вам накинул {message.text},'
+                                                  f' отскочило от тебя и попало в него')
+                users_scale[message.text] -= 2 * sum(gayresist_d[name][message.text])
+                users_scale[name] += sum(gayresist_d[name][message.text])
+            else:
+                bot.send_message(message.chat.id, 'Не получилось:(\nЭтот минус вам удвоился')
+                users_scale[name] += sum(gayresist_d[name][message.text])
 
 
 # секретный дикпик
