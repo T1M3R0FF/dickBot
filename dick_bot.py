@@ -247,6 +247,7 @@ def add(message):
             temp_set.clear()
             return True
         if len(text) == 2 and text[-1].isdigit():
+            # проверка на сутки этого пользователя
             if name not in check_add:
                 check_add.update({name: {message.text[-2]: 0}})
                 if check_add[name][message.text[-2]] - time.perf_counter() >= 86400 or \
@@ -254,12 +255,14 @@ def add(message):
                     nickname = text[-2]
                     inches = int(text[-1])
                     if nickname not in users_bonus:
-                        mess0 = bot.send_message(message.chat.id, f'Пользователь {nickname} еще не клубе, попробуйте еще раз')
+                        mess0 = bot.send_message(message.chat.id, f'Пользователь {nickname} еще не клубе,'
+                                                                  f' попробуйте еще раз')
                         bot.register_next_step_handler(mess0, add)
                     elif inches <= users_bonus[name]:
                         users_bonus[name] -= inches
                         users_scale[nickname] += inches
-                        bot.send_message(message.chat.id, f'Успешно накинул пользователю {nickname} <b>{inches} см.</b>',
+                        bot.send_message(message.chat.id, f'Успешно накинул пользователю {nickname} '
+                                                          f'<b>{inches} см.</b>',
                                          parse_mode='html')
                         gayresist_d[nickname].setdefault(name, []).append(int(inches))
                         battle_time = time.perf_counter()
@@ -294,6 +297,8 @@ def add(message):
                             return True
                     else:
                         bot.reply_to(message, 'Сегодня ты уже ему накинул')
+                        temp_set.clear()
+                        return True
                 else:
                     battle_time = time.perf_counter()
                     check_add.update({name: {message.text[-2]: battle_time}})
@@ -351,6 +356,7 @@ def remove(message):
             temp_set.clear()
             return True
         if len(text) == 2 and text[-1].isdigit():
+            # проверка на сутки этого пользователя
             if name not in check_remove:
                 check_remove.update({name: {message.text[-2]: 0}})
                 if check_remove[name][message.text[-2]] - time.perf_counter() >= 86400 or \
@@ -358,7 +364,8 @@ def remove(message):
                     nickname = text[-2]
                     inches = int(text[-1])
                     if nickname not in users:
-                        mess = bot.send_message(message.chat.id, f'Пользователь {nickname} еще не клубе, попробуйте еще раз')
+                        mess = bot.send_message(message.chat.id, f'Пользователь {nickname} еще не клубе,'
+                                                                 f' попробуйте еще раз')
                         bot.register_next_step_handler(mess, remove)
                     elif inches <= users_bonus[name]:
                         users_bonus[name] -= inches
@@ -398,6 +405,8 @@ def remove(message):
                             return True
                     else:
                         bot.reply_to(message, 'Сегодня ты уже ему убавил')
+                        temp_set.clear()
+                        return True
                 else:
                     battle_time = time.perf_counter()
                     check_remove.update({name: {message.text[-2]: battle_time}})
@@ -492,45 +501,49 @@ def callback_inline(call):
 
 def battle(message):
     name = '@' + str(message.from_user.username)
-    if name not in check_battle:
-        check_battle.update({name: {message.text: 0}})
-        if check_battle[name][message.text] - time.perf_counter() >= 86400 or \
-                check_battle[name][message.text] == 0:
-            if random.random() < gays[name][-1] / 100:
-                bot.send_message(message.chat.id, f'Сработало! То число, которое вам накинул {message.text},'
-                                                  f' отскочило от тебя и попало в него')
-                users_scale[message.text] -= 2 * sum(gayresist_d[name][message.text])
-                users_scale[name] += sum(gayresist_d[name][message.text])
-                battle_time = time.perf_counter()
-                check_battle.update({name: {message.text: battle_time}})
-            else:
-                bot.send_message(message.chat.id, 'Не получилось:(\nЭтот минус вам удвоился')
-                users_scale[name] += sum(gayresist_d[name][message.text])
-    else:
-        if message.text in check_battle[name].keys():
-            if check_battle[name][message.text] - time.perf_counter() >= 86400:
-                battle_time = time.perf_counter()
-                check_battle.update({name: {message.text: battle_time}})
-            else:
-                bot.reply_to(message, 'Сегодня ты уже с ним баттлился')
+    if message.text in gayresist_d[name]:
+        if name not in check_battle:
+            check_battle.update({name: {message.text: 0}})
+            if check_battle[name][message.text] - time.perf_counter() >= 86400 or \
+                    check_battle[name][message.text] == 0:
+                if random.random() < gays[name][-1] / 100:
+                    bot.send_message(message.chat.id, f'Сработало! То число, которое вам накинул {message.text},'
+                                                      f' отскочило от тебя и попало в него в размере х2')
+                    users_scale[message.text] += 2 * sum(gayresist_d[name][message.text])
+                    users_scale[name] -= sum(gayresist_d[name][message.text])
+                    battle_time = time.perf_counter()
+                    check_battle.update({name: {message.text: battle_time}})
+                else:
+                    bot.send_message(message.chat.id, 'Не получилось:(\nЭтот минус вам удвоился')
+                    users_scale[name] += sum(gayresist_d[name][message.text])
         else:
-            battle_time = time.perf_counter()
-            check_battle.update({name: {message.text: battle_time}})
-        if message.text not in gayresist_d[name].keys():
-            msg = bot.reply_to(message, 'Такого ника нет, попробуй еще раз')
-            bot.register_next_step_handler(msg, battle)
-        elif message.text in gayresist_d[name].keys() and\
-                ((message.text in check_battle[name].keys() and
-                  check_battle[name][message.text] - time.perf_counter() >= 86400) or
-                 (message.text not in check_battle[name].keys())):
-            if random.random() < gays[name][-1] / 100:
-                bot.send_message(message.chat.id, f'Сработало! То число, которое вам накинул {message.text},'
-                                                  f' отскочило от тебя и попало в него')
-                users_scale[message.text] -= 2 * sum(gayresist_d[name][message.text])
-                users_scale[name] += sum(gayresist_d[name][message.text])
+            if message.text in check_battle[name].keys():
+                if check_battle[name][message.text] - time.perf_counter() >= 86400:
+                    battle_time = time.perf_counter()
+                    check_battle.update({name: {message.text: battle_time}})
+                else:
+                    bot.reply_to(message, 'Сегодня ты уже с ним баттлился')
             else:
-                bot.send_message(message.chat.id, 'Не получилось:(\nЭтот минус вам удвоился')
-                users_scale[name] += sum(gayresist_d[name][message.text])
+                battle_time = time.perf_counter()
+                check_battle.update({name: {message.text: battle_time}})
+            if message.text not in gayresist_d[name].keys():
+                msg = bot.reply_to(message, 'Такого ника нет, попробуй еще раз')
+                bot.register_next_step_handler(msg, battle)
+            elif message.text in gayresist_d[name].keys() and\
+                    ((message.text in check_battle[name].keys() and
+                      check_battle[name][message.text] - time.perf_counter() >= 86400) or
+                     (message.text not in check_battle[name].keys())):
+                if random.random() < gays[name][-1] / 100:
+                    bot.send_message(message.chat.id, f'Сработало! То число, которое вам накинул {message.text},'
+                                                      f' отскочило от тебя и попало в него в размере х2 ')
+                    users_scale[message.text] += 2 * sum(gayresist_d[name][message.text])
+                    users_scale[name] -= sum(gayresist_d[name][message.text])
+                else:
+                    bot.send_message(message.chat.id, 'Не получилось:(\nЭтот минус вам удвоился')
+                    users_scale[name] += sum(gayresist_d[name][message.text])
+    else:
+        msg = bot.reply_to(message, 'Он тебе сегодня не убавлял, попробуй другой ник')
+        bot.register_next_step_handler(msg, battle)
 
 
 # секретный дикпик
