@@ -6,7 +6,7 @@ import schedule
 from telebot import types
 from threading import Thread
 
-bot = telebot.TeleBot('5706224983:AAH0u-lXIU5PMesCC8BZ-3lngx_RacONyfo')
+bot = telebot.TeleBot('')
 
 dicks = ['Твоя дилдосина', 'Твоя елда', 'Твой пенис', 'Твой хер',
          'Твоя залупа', 'Твой хуй', 'Твоя шишка', 'Твой нагибатель',
