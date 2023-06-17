@@ -595,7 +595,6 @@ def do_schedule():
         schedule.run_pending()
         time.sleep(1)
 
-
 thread = Thread(target=do_schedule)
 thread.start()
 bot.polling(non_stop=True)
