@@ -1,3 +1,4 @@
+import sqlite3
 import telebot
 import random
 import time
@@ -33,6 +34,32 @@ resist_time = 0
 summ = 0
 
 
+def create_table_if_not_exists():
+    conn = sqlite3.connect('dick_data.db')
+    c = conn.cursor()
+
+    c.execute('''CREATE TABLE IF NOT EXISTS dick_data
+              (id INTEGER PRIMARY KEY AUTOINCREMENT,
+               username TEXT,
+               scale INTEGER,
+               average INTEGER,
+               balance INTEGER)''')
+
+    conn.commit()
+    conn.close()
+
+
+def save_to_database(username, scale, average, balance):
+    conn = sqlite3.connect('dick_data.db')
+    c = conn.cursor()
+
+    c.execute("INSERT INTO dick_data (username, scale, average, balance) VALUES (?, ?, ?, ?)",
+              (username, scale, average, balance))
+
+    conn.commit()
+    conn.close()
+
+
 @bot.message_handler(commands=['help'])
 def manual(message):
     markup = types.InlineKeyboardMarkup()
@@ -60,6 +87,7 @@ def manual(message):
 @bot.message_handler(commands=['start'])
 def start(message):
     global chat_id
+    create_table_if_not_exists()
     if str(message.chat.id) != "-849170342":  # чтобы бот работал только в 1 чате
         return True
     name = '@' + str(message.from_user.username)
@@ -529,7 +557,7 @@ def battle(message):
             if message.text not in gayresist_d[name].keys():
                 msg = bot.reply_to(message, 'Такого ника нет, попробуй еще раз')
                 bot.register_next_step_handler(msg, battle)
-            elif message.text in gayresist_d[name].keys() and\
+            elif message.text in gayresist_d[name].keys() and \
                     ((message.text in check_battle[name].keys() and
                       check_battle[name][message.text] - time.perf_counter() >= 86400) or
                      (message.text not in check_battle[name].keys())):
@@ -557,6 +585,13 @@ def dickpic():
 def do_schedule():
     schedule.every().day.at('12:00').do(dickpic)
     while True:
+        for username in users:
+            if average_dicks:
+                schedule.every(30).seconds.do(save_to_database, username, users_scale[username],
+                                              average_dicks[username], users_bonus[username])
+            else:
+                schedule.every(30).seconds.do(save_to_database, username, users_scale[username],
+                                              0, users_bonus[username])
         schedule.run_pending()
         time.sleep(1)
 
